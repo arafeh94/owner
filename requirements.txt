@@ -1,0 +1,7 @@
+pip~=22.0.2
+Jinja2~=3.1.6
+setuptools~=59.6.0
+dataloader~=2.0
+torch~=2.11.0
+torchvision~=0.26.0
+pillow~=12.2.0

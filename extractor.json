@@ -1,0 +1,16 @@
+[
+  "dur",
+  "proto",
+  "state",
+  "sbytes",
+  "dbytes",
+  "spkts",
+  "dpkts",
+  "rate",
+  "sload",
+  "dload",
+  "sttl",
+  "dttl",
+  "ct_srv_src",
+  "ct_srv_dst"
+]
