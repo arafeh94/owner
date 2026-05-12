@@ -26,7 +26,7 @@ class MLArgs:
             "--data-type",
             required=False,
             default=defaults.get("data_type"),
-            choices=["records", "dataset", "packets"],
+            choices=["mongo", "dataset", "jsonl", "inline-json"],
         )
 
         parser.add_argument(
@@ -38,7 +38,7 @@ class MLArgs:
 
         self._require(parsed.run, "run")
         self._require(parsed.data, "data")
-        self._require(parsed.data_type, "data_type")
+        self._require(parsed.data_type, "data-type")
 
         self.run: str = parsed.run
         self.data: str = parsed.data

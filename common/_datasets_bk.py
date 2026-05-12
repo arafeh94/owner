@@ -3,7 +3,7 @@ import os
 import kagglehub
 import pandas as pd
 import torch
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader, Subset, TensorDataset
 from torchvision import datasets, transforms
 
 
@@ -47,29 +47,22 @@ def ids() -> DataLoader:
     )
 
 
+def atlas() -> DataLoader:
+    return ids()
+
+
 def ids_sample(n: int = 10) -> DataLoader:
     loader = ids()
+
     dataset = loader.dataset
 
-    if not isinstance(dataset, TensorDataset):
-        raise TypeError("ids() must return a DataLoader backed by TensorDataset")
-
     n = min(n, len(dataset))
+    indices = list(range(n))  # deterministic sample
 
-    tensors = dataset.tensors
-
-    sampled_tensors = tuple(
-        tensor[:n]
-        for tensor in tensors
-    )
-
-    sample_dataset = TensorDataset(*sampled_tensors)
-
-    if hasattr(dataset, "columns"):
-        sample_dataset.columns = dataset.columns
+    subset = Subset(dataset, indices)
 
     return DataLoader(
-        sample_dataset,
+        subset,
         batch_size=min(loader.batch_size, n),
         shuffle=True,
     )

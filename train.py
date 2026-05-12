@@ -11,8 +11,7 @@ from common.ml_results import train_ok
 from common.script_tools import prepare_data
 from src import model_ids, model_mnist
 
-ml_args = MLArgs({'run': 'train', 'data': 'ids', 'data_type': 'dataset', 'args': {'epochs': 2, 'lr': 1e-3}})
-data = prepare_data(ml_args)
+ml_args = MLArgs({'run': 'train', 'data': 'ids', 'data-type': 'dataset', 'args': {'epochs': 2, 'lr': 1e-3}})
 
 data: DataLoader = prepare_data(ml_args)
 extra_args = ml_args.args
@@ -49,7 +48,7 @@ def main():
     return train_ok()
 
 
-# Only modify this functions
+# old ignore
 def bkp_mnist():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model_mnist.Net().to(device)
