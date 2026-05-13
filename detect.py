@@ -55,9 +55,7 @@ def detect(model, dataloader, device):
 
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
     model = load_model(device)
-
     return detect(model, data, device)
 
 
