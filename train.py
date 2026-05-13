@@ -47,7 +47,7 @@ def main():
 
     model_path = ROOT / "model.pt"
     torch.save(model.state_dict(), model_path)
-    return train_ok(model_path)
+    return train_ok(str(model_path))
 
 
 # old ignore
