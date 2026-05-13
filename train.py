@@ -50,31 +50,6 @@ def main():
     return train_ok(str(model_path))
 
 
-# old ignore
-def bkp_mnist():
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = model_mnist.Net().to(device)
-    train_data, test_data = dataloader_tools.split_loader(data)
-    lr = extra_args.get("lr", 1e-3)
-    epochs = extra_args.get("epochs", 5)
-
-    optimizer = optim.Adam(model.parameters(), lr=lr)
-    criterion = nn.CrossEntropyLoss()
-
-    for epoch in range(epochs):
-        train_loss, train_acc = model_mnist.train(model, train_data, optimizer, criterion, device)
-        test_loss, test_acc = model_mnist.evaluate(model, test_data, criterion, device)
-
-        print(
-            f"Epoch {epoch + 1}/{epochs} | "
-            f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f} | "
-            f"Test Loss: {test_loss:.4f}, Test Acc: {test_acc:.4f}"
-        )
-
-    model_path = ROOT / "model.pt"
-    torch.save(model.state_dict(), model_path)
-    return train_ok(model_path)
-
 
 if __name__ == "__main__":
     print(json.dumps(main()))
