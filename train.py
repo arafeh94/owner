@@ -9,6 +9,7 @@ from common import dataloader_tools
 from common.ml_args import MLArgs
 from common.ml_results import train_ok
 from common.script_tools import prepare_data
+from module import ROOT
 from src import model_ids, model_mnist
 
 ml_args = MLArgs({'run': 'train', 'data': 'ids', 'data-type': 'dataset', 'args': {'epochs': 2, 'lr': 1e-3}})
@@ -44,8 +45,9 @@ def main():
             f"Test Loss: {test_loss:.4f}, Test Acc: {test_acc:.4f}"
         )
 
-    torch.save(model.state_dict(), "model.pt")
-    return train_ok()
+    model_path = ROOT / "model.pt"
+    torch.save(model.state_dict(), model_path)
+    return train_ok(model_path)
 
 
 # old ignore
@@ -69,8 +71,9 @@ def bkp_mnist():
             f"Test Loss: {test_loss:.4f}, Test Acc: {test_acc:.4f}"
         )
 
-    torch.save(model.state_dict(), "model.pt")
-    return train_ok()
+    model_path = ROOT / "model.pt"
+    torch.save(model.state_dict(), model_path)
+    return train_ok(model_path)
 
 
 if __name__ == "__main__":

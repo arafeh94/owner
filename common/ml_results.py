@@ -1,6 +1,7 @@
-def train_ok(**args):
+def train_ok(model_path: str, **args):
     return {
         "status": "ok",
+        "model_path": model_path,
         **args
     }
 

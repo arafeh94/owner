@@ -1,25 +1,42 @@
 import os
+from typing import Any
 
-import numpy as np
-import pandas as pd
 import torch
+from dotenv import load_dotenv
 from pymongo import MongoClient
 from torch.utils.data import DataLoader, TensorDataset
 
 from common.data_loaders.data_loaders import IDSDataLoader
+from common.data_loaders.encoder import ColumnEncoder
+
+load_dotenv()
 
 
 class StreamScanMongoDBDataLoader(IDSDataLoader):
+    DROP_COLUMNS = {
+        "id",
+        "_id",
+        "model_name",
+    }
+
+    TARGET_COLUMNS = {
+        "Label",
+        "label",
+        "Attack",
+        "attack",
+        "target",
+        "Target",
+        "y",
+    }
+
     def __init__(
-        self,
-        mongo_uri: str | None = None,
-        database_name: str | None = None,
-        batch_size: int = 32,
-        shuffle: bool = True,
+            self,
+            mongo_uri: str | None = None,
+            database_name: str | None = None,
     ):
         self.mongo_uri = mongo_uri or os.getenv(
             "MONGODB_URI",
-            "mongodb://192.168.186.69:27017",
+            "mongodb://localhost:27017",
         )
 
         self.database_name = database_name or os.getenv(
@@ -27,15 +44,13 @@ class StreamScanMongoDBDataLoader(IDSDataLoader):
             "ml_s",
         )
 
-        self.batch_size = batch_size
-        self.shuffle = shuffle
-
     def load(self, data_arg: str) -> DataLoader:
         """
-        data_arg is the MongoDB collection name.
+        data_arg = MongoDB collection name.
 
         Example:
             --data atlas
+            --data-type mongo
         """
 
         client = MongoClient(self.mongo_uri)
@@ -53,51 +68,93 @@ class StreamScanMongoDBDataLoader(IDSDataLoader):
             rows = []
 
             for doc in docs:
-                if "contained" not in doc:
-                    continue
+                row = doc.get("contained", doc)
 
-                rows.append(doc["contained"])
+                if isinstance(row, dict):
+                    rows.append(row)
 
             if not rows:
                 raise ValueError(
-                    f"No documents with `contained` found in collection '{data_arg}'"
+                    f"No valid documents found in MongoDB collection '{data_arg}'"
                 )
 
-            df = pd.DataFrame(rows)
+            target_column = self._find_target_column(rows[0])
 
-            if "id" in df.columns:
-                df.drop(columns="id", inplace=True)
+            feature_order = [
+                key
+                for key in rows[0].keys()
+                if key not in self.DROP_COLUMNS
+                and key != target_column
+            ]
 
-            df.dropna(inplace=True)
-            df.replace([np.inf, -np.inf], np.nan, inplace=True)
-            df.dropna(inplace=True)
+            encoder = ColumnEncoder()
 
-            if "Label" not in df.columns:
-                raise ValueError("MongoDB data must contain `Label` column")
+            x_rows = []
+            y_rows = []
 
-            df["Attack"] = np.where(df["Label"] == "BENIGN", 0, 1)
+            for row in rows:
+                x_rows.append([
+                    encoder.encode(key, row.get(key))
+                    for key in feature_order
+                ])
 
-            y = df["Attack"].astype(np.int64)
+                if target_column is not None:
+                    y_rows.append(
+                        self._target_to_int(row.get(target_column))
+                    )
 
-            drop_columns = ["Label", "Attack"]
+            x_tensor = torch.tensor(x_rows, dtype=torch.float32)
 
-            if "model_name" in df.columns:
-                drop_columns.append("model_name")
-
-            x = df.drop(drop_columns, axis=1)
-
-            x = x.astype(np.float32)
-
-            x_tensor = torch.tensor(x.values, dtype=torch.float32)
-            y_tensor = torch.tensor(y.values, dtype=torch.long)
+            if target_column is not None:
+                y_tensor = torch.tensor(y_rows, dtype=torch.long)
+            else:
+                y_tensor = torch.full(
+                    size=(x_tensor.shape[0],),
+                    fill_value=-1,
+                    dtype=torch.long,
+                )
 
             dataset = TensorDataset(x_tensor, y_tensor)
 
-            return DataLoader(
-                dataset,
-                batch_size=self.batch_size,
-                shuffle=self.shuffle,
-            )
+            dataset.columns = feature_order
+            dataset.encoders = encoder.category_maps
+
+            return DataLoader(dataset)
 
         finally:
             client.close()
+
+    def _find_target_column(self, row: dict[str, Any]) -> str | None:
+        for key in row.keys():
+            if key in self.TARGET_COLUMNS:
+                return key
+
+        return None
+
+    def _target_to_int(self, value: Any) -> int:
+        if isinstance(value, bool):
+            return int(value)
+
+        if isinstance(value, int):
+            return value
+
+        if isinstance(value, float):
+            return int(value)
+
+        text = str(value).strip()
+
+        if text.isdigit():
+            return int(text)
+
+        normalized = text.lower()
+
+        if normalized in {"benign", "normal", "false", "no"}:
+            return 0
+
+        if normalized in {"attack", "malicious", "true", "yes"}:
+            return 1
+
+        raise ValueError(
+            f"Unsupported target value {value!r}. "
+            "Use numeric labels or handle label mapping in preprocessing."
+        )
