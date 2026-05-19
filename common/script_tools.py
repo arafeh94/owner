@@ -4,8 +4,9 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from torch.utils.data import DataLoader, TensorDataset
 import torch
+from torch.utils.data import DataLoader, TensorDataset
+
 from common.data_loaders.data_loaders import DatasetsDataLoader, IDSDataLoader
 from common.data_loaders.inline_json_data_loader import InlineJSONDataLoader
 from common.data_loaders.jsonl_data_loader import JSONLDataLoader
@@ -45,8 +46,7 @@ def load_extractor() -> list[str]:
 
 
 # noinspection PyUnresolvedReferences
-
-def apply_extractor(data: DataLoader, extractor: list[str]) -> DataLoader:
+def apply_extractor(data: DataLoader, extractor) -> DataLoader:
     if not extractor:
         return data
 
@@ -66,11 +66,36 @@ def apply_extractor(data: DataLoader, extractor: list[str]) -> DataLoader:
 
     columns = dataset.columns
 
-    indices = [
-        columns.index(field)
-        for field in extractor
-        if field in columns
-    ]
+    indices = []
+    selected_columns = []
+    missing_fields = []
+
+    for field in extractor:
+        # Case 1: normal field name, e.g. "src_port"
+        if isinstance(field, str):
+            candidates = [field]
+
+        # Case 2: aliases, e.g. ["src_ip", "source_ip"]
+        elif isinstance(field, list) and all(isinstance(item, str) for item in field):
+            candidates = field
+
+        else:
+            raise ValueError(
+                "Invalid extractor field. Each item must be either a string "
+                f"or a list of strings. Got: {field!r}"
+            )
+
+        matched_column = next(
+            (candidate for candidate in candidates if candidate in columns),
+            None,
+        )
+
+        if matched_column is None:
+            missing_fields.append(candidates)
+            continue
+
+        indices.append(columns.index(matched_column))
+        selected_columns.append(matched_column)
 
     if not indices:
         raise ValueError(
@@ -91,6 +116,7 @@ def apply_extractor(data: DataLoader, extractor: list[str]) -> DataLoader:
         )
 
     x_selected = x[:, indices]
+
     if y is None:
         y = torch.full(
             size=(x_selected.shape[0],),
@@ -99,11 +125,7 @@ def apply_extractor(data: DataLoader, extractor: list[str]) -> DataLoader:
         )
 
     new_dataset = TensorDataset(x_selected, y)
-
-    new_dataset.columns = [
-        columns[index]
-        for index in indices
-    ]
+    new_dataset.columns = selected_columns
 
     return DataLoader(
         new_dataset,

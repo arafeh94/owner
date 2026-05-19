@@ -1,25 +1,15 @@
-import json
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
 from common import dataloader_tools
-from common.ml_args import MLArgs
 from common.ml_results import train_ok
-from common.script_tools import prepare_data
 from module import ROOT
-from src import model_ids, model_mnist
-
-ml_args = MLArgs({'run': 'train', 'data': 'ids', 'data-type': 'dataset', 'args': {'epochs': 2, 'lr': 1e-3}})
-
-data: DataLoader = prepare_data(ml_args)
-extra_args = ml_args.args
+from src.models import model_ids
 
 
-# Only modify this functions
-def main():
+def main(data: DataLoader, **kwargs):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     train_data, test_data = dataloader_tools.split_loader(data)
@@ -29,8 +19,8 @@ def main():
 
     model = model_ids.IDSNet(input_dim=input_dim, num_classes=2).to(device)
 
-    lr = extra_args.get("lr", 1e-3)
-    epochs = extra_args.get("epochs", 5)
+    lr = kwargs.get("lr", 1e-3)
+    epochs = kwargs.get("epochs", 5)
 
     optimizer = optim.Adam(model.parameters(), lr=lr)
     criterion = nn.CrossEntropyLoss()
@@ -48,8 +38,3 @@ def main():
     model_path = ROOT / "model.pt"
     torch.save(model.state_dict(), model_path)
     return train_ok(str(model_path))
-
-
-
-if __name__ == "__main__":
-    print(json.dumps(main()))

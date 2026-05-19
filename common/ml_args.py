@@ -13,7 +13,7 @@ class MLArgs:
             "--run",
             required=False,
             default=defaults.get("run"),
-            choices=["train", "detect"],
+            choices=["train", "predict"],
         )
 
         parser.add_argument(
@@ -25,7 +25,7 @@ class MLArgs:
         parser.add_argument(
             "--data-type",
             required=False,
-            default=defaults.get("data_type"),
+            default=defaults.get("data-type"),
             choices=["mongo", "dataset", "jsonl", "inline-json"],
         )
 

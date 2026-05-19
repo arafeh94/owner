@@ -10,7 +10,7 @@ def main():
 
     result = run_script(
         root=ROOT,
-        script_name="train.py" if ml_args.run == "train" else "detect.py",
+        script_name="train_script.py" if ml_args.run == "train" else "predict_script.py",
         ml_args=ml_args,
         console_display=ml_args.run == "train"
     )
@@ -23,9 +23,9 @@ def main():
             "result": result
         }))
 
-    elif ml_args.run == "detect":
+    elif ml_args.run == "predict":
         if not isinstance(result, list):
-            raise ValueError("detect.py must return a JSON array")
+            raise ValueError("predict_script.py must return a JSON array")
 
         print(json.dumps(result))
 

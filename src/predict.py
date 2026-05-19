@@ -1,20 +1,12 @@
-import json
-
 import torch
 import torch.nn.functional as F
+from torch.utils.data import DataLoader
 
-from common.ml_args import MLArgs
-from common.script_tools import prepare_data
-from src import model_ids
-
-ml_args = MLArgs({"run": "detect", "data": "mnist_sample", "data_type": "dataset"})
-
-data = prepare_data(ml_args)
-extra_args = ml_args.args
+from common.ml_results import predict_ok, PredictionResults, Record
+from src.models import model_ids
 
 
-# Only modify this
-def load_model(device):
+def load_model(data: DataLoader, device):
     sample_inputs, _ = next(iter(data))
     input_dim = sample_inputs.shape[1]
 
@@ -33,8 +25,11 @@ def load_model(device):
 
 
 @torch.no_grad()
-def detect(model, dataloader, device):
-    results = []
+def main(dataloader: DataLoader, **kwargs):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = load_model(dataloader, device)
+
+    results = PredictionResults()
 
     for inputs, _ in dataloader:
         inputs = inputs.to(device)
@@ -45,19 +40,6 @@ def detect(model, dataloader, device):
         confs, preds = probs.max(1)
 
         for y, acc in zip(preds, confs):
-            results.append({
-                "y": int(y.item()),
-                "acc": float(acc.item()),
-            })
+            results.append(Record(int(y.item()), float(acc.item())))
 
-    return results
-
-
-def main():
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = load_model(device)
-    return detect(model, data, device)
-
-
-if __name__ == "__main__":
-    print(json.dumps(main()))
+    return predict_ok(results)
